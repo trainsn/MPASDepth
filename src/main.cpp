@@ -17,6 +17,7 @@
 #include <limits>
 #include "def.h"
 #include <assert.h>
+#include "cnpy.h"
 
 #include "shader.h"
 #define STBI_MSC_SECURE_CRT
@@ -269,6 +270,19 @@ int main(int argc, char **argv)
 	//loadMeshFromNetCDF("D:\\OSU\\Grade1\\in-situ\\6.0\\output.nc");
 	//loadMeshFromNetCDF("D:\\OSU\\Grade1\\in-situ\\MPAS-server\\Inter\\0070_4.88364_578.19012_0.51473_227.95909_ght0.2_epoch420.nc");
 	loadMeshFromNetCDF(input_path);
+	
+// 	vector<int> equator(nCells);
+// 	for (int i = 0; i < nCells; i++) {
+// 		if ((latCell[i] > -M_PI * 7 / 180) && (latCell[i] < M_PI * 7 / 180) * (lonCell[i] > M_PI * 160 / 180) * (lonCell[i] < M_PI * 280 / 180))
+// 			equator[i] = 1;
+// 		else 
+// 		    equator[i] = 0;
+// 	}
+// 	stringstream ss;
+// 	ss << "equator_patch" << ".npy";
+// 	string equator_filename = ss.str();
+
+// 	cnpy::npy_save(equator_filename.c_str(), &equator[0], { (size_t)nCells }, "w");
 
 	// glfw: initialize and configure
 	// ------------------------------
@@ -318,10 +332,11 @@ int main(int argc, char **argv)
 	// render loop
 	// -----------
 	// while (!glfwWindowShouldClose(window))
-	//for (int layer_id = 0; layer_id < nVertLevels; layer_id++)
-	const double isovalue = 25.0;
+	for (int layer_id = 25; layer_id >= 10; layer_id-=5)
 	{
-		isoDepth.reserve(nCells);
+	    double isovalue = layer_id;
+	    
+		isoDepth.resize(nCells);
 		for (int i = 0; i < nCells; i++) {
 			double depth = 0.0;
 			for (int j = 0; j < maxLevelCell[i] - 1; j++) {
@@ -334,8 +349,13 @@ int main(int argc, char **argv)
 					break;
 				}
 			}
-			isoDepth.push_back(depth);
+			isoDepth[i] = depth;
 		}
+		
+		char npypath[1024];
+		sprintf(npypath, "/fs/project/PAS0027/MPAS1/Results/%s/depth%d.npy", fileid.c_str(), layer_id);
+
+		cnpy::npy_save(npypath, &isoDepth[0], { (size_t)nCells }, "w");
 
 		// isoDepth 
 		glGenBuffers(1, &isoDepthBuf);
@@ -365,6 +385,7 @@ int main(int argc, char **argv)
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_BUFFER, latCellTex);
 		glTexBuffer(GL_TEXTURE_BUFFER, GL_R32F, latCellBuf);
+		
 		shader.setInt("latCell", 0);
 
 		glActiveTexture(GL_TEXTURE1);
@@ -381,6 +402,13 @@ int main(int argc, char **argv)
 		glBindTexture(GL_TEXTURE_BUFFER, isoDepthTex);
 		glTexBuffer(GL_TEXTURE_BUFFER, GL_R32F, isoDepthBuf);
 		shader.setInt("isoDepth", 3);
+		
+		float dMax = 0.0;
+		if (layer_id >= 15)
+		    dMax = 400;
+		else
+		    dMax = 1500;
+		shader.setFloat("dMax", dMax);
 
 		glBindVertexArray(VAO);
 		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -388,7 +416,7 @@ int main(int argc, char **argv)
 
 		stbi_flip_vertically_on_write(1);
 		char imagepath[1024];
-		sprintf(imagepath, "/fs/project/PAS0027/MPAS1/Results/%s/depth.png", fileid.c_str());
+		sprintf(imagepath, "/fs/project/PAS0027/MPAS1/Results/%s/depth%d.png", fileid.c_str(), layer_id);
 		float* pBuffer = new float[SCR_WIDTH * SCR_HEIGHT * 4];
 		unsigned char* pImage = new unsigned char[SCR_WIDTH * SCR_HEIGHT * 3];
 		glReadBuffer(GL_BACK);

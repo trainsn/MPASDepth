@@ -16,6 +16,7 @@ uniform isamplerBuffer cellsOnVertex;
 uniform samplerBuffer isoDepth;
 
 const float M_PI = 3.14159265358;
+const float eps = 1e-1;
 
 void main(){
 	// only consider outter most surface mesh 
@@ -46,6 +47,15 @@ void main(){
 		if (showTriangle){	// filter out triangle cross Prime meridian
 			showTriangle = abs(lon[0] - lon[1]) < M_PI / 2 && abs(lon[0] - lon[2]) < M_PI / 2 && abs(lon[1] - lon[2]) < M_PI / 2;
 		}
+		if (showTriangle){	// three vertices all have depth > 0
+			for (int i = 0; i < 3; i++){
+				int cell_id = cellIds[i];
+				CLIMATE_VALS_VAR = texelFetch(isoDepth, cell_id - 1).x;
+				if (CLIMATE_VALS_VAR < eps)
+					showTriangle = false;
+			}	
+		}
+		
 		if (showTriangle){
 			for (int i = 0; i < 3; i++){
 				int cell_id = cellIds[i];
