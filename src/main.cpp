@@ -23,6 +23,7 @@
 #define STBI_MSC_SECURE_CRT
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#include "snapshots.h"
 using namespace std;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -254,18 +255,20 @@ void initTextures() {
 
 int main(int argc, char **argv)
 {
-	char filename[1024];
+    char filename[1024];
 	sprintf(filename, argv[1]);
-	fprintf(stderr, "%s\n", argv[1]);
-
-	string filename_s = filename;
-	int pos_last_dot = filename_s.rfind(".");
-	string input_name = filename_s.substr(0, pos_last_dot);
-	int pos_first_dash = filename_s.find("_");
-	string fileid = filename_s.substr(0, pos_first_dash);
-
+	char timeid[1024];
+	sprintf(timeid, argv[2]);
+	int timestep;
+	sscanf(timeid, "%d", &timestep);
+	fprintf(stderr, "%s/%s\n", argv[1], snapshots[timestep].c_str()); 
+	
+	string input_name = filename;
+    int pos_first_dash = input_name.find("_");
+	string fileid = input_name.substr(0, pos_first_dash);
+	
 	char input_path[1024];
-	sprintf(input_path, "/fs/project/PAS0027/MPAS1/Results/%s", filename);
+	sprintf(input_path, "/fs/project/PAS0027/MPAS2/Results/%s/%s", filename, snapshots[timestep].c_str());
 	
 	//loadMeshFromNetCDF("D:\\OSU\\Grade1\\in-situ\\6.0\\output.nc");
 	//loadMeshFromNetCDF("D:\\OSU\\Grade1\\in-situ\\MPAS-server\\Inter\\0070_4.88364_578.19012_0.51473_227.95909_ght0.2_epoch420.nc");
@@ -332,7 +335,7 @@ int main(int argc, char **argv)
 	// render loop
 	// -----------
 	// while (!glfwWindowShouldClose(window))
-	for (int layer_id = 25; layer_id >= 10; layer_id-=5)
+    for (int layer_id = 25; layer_id >= 5; layer_id-=2)
 	{
 	    double isovalue = layer_id;
 	    
@@ -353,7 +356,7 @@ int main(int argc, char **argv)
 		}
 		
 		char npypath[1024];
-		sprintf(npypath, "/fs/project/PAS0027/MPAS1/Results/%s/depth%d.npy", fileid.c_str(), layer_id);
+		sprintf(npypath, "/fs/project/PAS0027/MPAS2/Results/%s/t%s/depth%d.npy", fileid.c_str(), timeid, layer_id);
 
 		cnpy::npy_save(npypath, &isoDepth[0], { (size_t)nCells }, "w");
 
@@ -416,7 +419,7 @@ int main(int argc, char **argv)
 
 		stbi_flip_vertically_on_write(1);
 		char imagepath[1024];
-		sprintf(imagepath, "/fs/project/PAS0027/MPAS1/Results/%s/depth%d.png", fileid.c_str(), layer_id);
+		sprintf(imagepath, "/fs/project/PAS0027/MPAS2/Results/%s/t%s/depth%d.png", fileid.c_str(), timeid, layer_id);
 		float* pBuffer = new float[SCR_WIDTH * SCR_HEIGHT * 4];
 		unsigned char* pImage = new unsigned char[SCR_WIDTH * SCR_HEIGHT * 3];
 		glReadBuffer(GL_BACK);
